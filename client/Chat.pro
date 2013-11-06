@@ -4,19 +4,16 @@
 #
 #-------------------------------------------------
 
-QT       += core gui widgets
+QT       += core gui
+greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
 TARGET = Chat
-CONFIG   += console
-CONFIG   -= app_bundle
-
-
 TEMPLATE = app
 
-LIBS += -L/home/andrey/boost/lib/
+#LIBS += -L/home/andrey/boost/lib/
 LIBS += -lboost_system -lboost_thread
 
-INCLUDEPATH += /home/andrey/boost/include/
+#INCLUDEPATH += /home/andrey/boost/include/
 
 SOURCES += main.cpp \
     mainwindow.cpp \
