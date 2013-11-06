@@ -10,12 +10,11 @@ class LoginDialog: public QDialog {
 
 public:
     LoginDialog();
-
-private:
     QLineEdit * loginText;
     QLineEdit * serverText;
     QLineEdit * portText;
 
+private:
     QLabel * loginLabel;
     QLabel * serverLabel;
     QLabel * portLabel;
@@ -24,8 +23,6 @@ private:
     QPushButton * quitButton;
 
 private slots:
-    void quit();
-    void login();
 };
 
 #endif // LOGINDIALOG_H

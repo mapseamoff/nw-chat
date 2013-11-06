@@ -13,8 +13,8 @@ LoginDialog::LoginDialog()
 
     loginButton = new QPushButton(tr("Login"));
     quitButton = new QPushButton(tr("Quit"));
-    connect(loginButton, SIGNAL(clicked()), this, SLOT(login()));
-    connect(quitButton, SIGNAL(clicked()), this, SLOT(quit()));
+    connect(loginButton, SIGNAL(clicked()), this, SLOT(accept()));
+    connect(quitButton, SIGNAL(clicked()), this, SLOT(reject()));
 
     QGridLayout * loginLayout = new QGridLayout();
     loginLayout->addWidget(loginLabel, 0, 0);
@@ -38,12 +38,4 @@ LoginDialog::LoginDialog()
     this->setLayout(mainLayout);
     this->setWindowTitle("Connect to Chat");
     this->resize(200, 150);
-}
-
-void LoginDialog::login() {
-
-}
-
-void LoginDialog::quit() {
-
 }
