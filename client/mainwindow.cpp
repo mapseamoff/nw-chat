@@ -1,15 +1,17 @@
 #include "mainwindow.h"
 #include <QVBoxLayout>
 #include <QHBoxLayout>
+#include <QMessageBox>
 
-MainWindow::MainWindow()
-{
-    chatEdit = new QTextEdit();
-    messageEdit = new QTextEdit();
-    sendButton = new QPushButton(tr("send"));
-    connectButton = new QPushButton(tr("Connect"));
+MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
+    chatEdit = new QTextEdit(this);
+    messageEdit = new QTextEdit(this);
+    sendButton = new QPushButton(tr("Send"), this);
+    connectButton = new QPushButton(tr("Connect"), this);
+    loginDialog = new LoginDialog(this);
+
     connect(sendButton, SIGNAL(clicked()), this, SLOT(sendMessage()));
-    connect(connectButton, SIGNAL(clicked()), this, SLOT(connectWindow()));
+    connect(connectButton, SIGNAL(clicked()), this, SLOT(showLoginDialog()));
 
     QHBoxLayout * layout = new QHBoxLayout();
     layout->addWidget(messageEdit);
@@ -27,8 +29,17 @@ MainWindow::MainWindow()
     messageEdit->setFocus();
     chatEdit->setReadOnly(true);
     sendButton->setDisabled(true);
-    connectWindow();
 
+    client = new ChatClient(this);
+    connect(client, SIGNAL(connectedToChat(bool)), this, SLOT(connectedToChat(bool)));
+    connect(client, SIGNAL(loginResult(bool)), this, SLOT(loggedIn(bool)));
+    connect(client, SIGNAL(socketError()), this, SLOT(socketError()));
+    connect(client, SIGNAL(protocolError()), this, SLOT(protocolError()));
+    connect(client, SIGNAL(gotMessage(QString)), this, SLOT(newMessage(QString)));
+
+    userName = "";
+
+    showLoginDialog();
 }
 
 MainWindow::~MainWindow() {
@@ -36,7 +47,7 @@ MainWindow::~MainWindow() {
 }
 
 void MainWindow::sendMessage() {
-    std::string msg = messageEdit->toPlainText().toStdString();
+    QString msg = messageEdit->toPlainText();
     if (msg == "") {
         return;
     }
@@ -46,50 +57,59 @@ void MainWindow::sendMessage() {
     else if(msg == "/list") {
         client->getUserList();
     } else {
+        lastMessage = QString("[%1] %2").arg(userName).arg(msg);
         client->sendMessage(msg);
     }
+    messageEdit->clear();
 }
 
-void MainWindow::update() {
-    std::stringstream &ss = client->getMessages();
-    std::string str;
-    while (ss >> str) {
-        chatEdit->append(str.c_str());
+void MainWindow::connectedToChat(bool ok) {
+    if(!ok) QMessageBox::critical(this, "Error", "Unable to connect: " + client->getLastError());
+    else client->loginUser(userName);
+}
+
+void MainWindow::loggedIn(bool ok) {
+    if(!ok) {
+        QMessageBox::critical(this, "Error", "Unable to connect: " + client->getLastError());
+    } else {
+        sendButton->setEnabled(true);
+        connectButton->setText("Disconnect");
+        disconnect(connectButton, SIGNAL(clicked()), this, SLOT(showLoginDialog()));
+        connect(connectButton, SIGNAL(clicked()), this, SLOT(disconnectFromChat()));
+        this->setWindowTitle("Chat (Connected)");
+        chatEdit->append("Welcome, " + userName + "!");
     }
 }
 
-void MainWindow::connectWindow() {
-    LoginDialog * dialog = new LoginDialog();
-    if (dialog->exec() == QDialog::Accepted) {
-        boost::mutex::scoped_lock lock(clientLock);
-        std::string server = dialog->serverText->text().toStdString();
-        std::string login = dialog->loginText->text().toStdString();
-        std::string port = dialog->portText->text().toStdString();
-
-        boost::asio::io_service io_service;
-        tcp::resolver resolver(io_service);
-
-        tcp::resolver::query query(server, port);
-        tcp::resolver::iterator iterator = resolver.resolve(query);
-        boost::thread t(boost::bind(&boost::asio::io_service::run, &io_service));
-
-        client = new ChatClient(io_service, iterator, waitClient);
-        waitClient.wait(lock);
-        if(!client->connected()) {
-            chatEdit->setText("Unable to connect ");
-            return;
-        }
-
-        client->loginUser(login);
-        waitClient.wait(lock);
-        if(!client->isLoggedIn()) {
-            chatEdit->setText("Unable to login");
-            return;
-        }
-        sendButton->setDisabled(false);
-        this->setWindowTitle(tr("Chat (Connected)"));
+void MainWindow::showLoginDialog() {
+    if (loginDialog->exec() == QDialog::Accepted) {
+        QString server = loginDialog->serverText->text();
+        QString port = loginDialog->portText->text();
+        userName = loginDialog->loginText->text();
+        client->connectToChat(server, port);
     } else {
         exit(0);
     }
-    chatEdit->setText("eeee ");
+}
+
+void MainWindow::disconnectFromChat() {
+    client->logoutUser();
+    sendButton->setEnabled(false);
+    connectButton->setText("Connect");
+    connect(connectButton, SIGNAL(clicked()), this, SLOT(showLoginDialog()));
+    disconnect(connectButton, SIGNAL(clicked()), this, SLOT(disconnectFromChat()));
+}
+
+void MainWindow::socketError() {
+    QMessageBox::critical(this, "Critical error", client->getLastError());
+    if(client->connected()) disconnectFromChat();
+}
+
+void MainWindow::protocolError() {
+    chatEdit->append(client->getLastError());
+}
+
+void MainWindow::newMessage(QString msg) {
+    if(msg.isEmpty()) chatEdit->append(lastMessage);
+    else chatEdit->append(msg);
 }

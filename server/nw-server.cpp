@@ -5,6 +5,7 @@
 #include <boost/bind.hpp>
 #include <boost/lexical_cast.hpp>
 #include <boost/enable_shared_from_this.hpp>
+#include <boost/thread.hpp>
 
 #include "chatmessage.h"
 
@@ -47,7 +48,11 @@ class ChatServer {
         void handleReadMessageBody(const boost::system::error_code& error) {
             if(!error) {
                 //process message
+                boost::posix_time::ptime processBegin = boost::posix_time::microsec_clock::universal_time();
                 server->processMessage(this, inMessage);
+                size_t processTime = (size_t)(boost::posix_time::microsec_clock::universal_time() - processBegin).total_microseconds();
+//                std::cout << "Total users: " << (server->sessions.size() - 1) << " request time: " << processTime << "us" << std::endl;
+                server->updateClientProcessTime(processTime);
                 waitForMessage();
             } else {
                 server->closeSession(shared_from_this());
@@ -214,6 +219,8 @@ class ChatServer {
 
 public:
     ChatServer(boost::asio::io_service &io_service, unsigned short port) : _io_service(io_service), _acceptor(_io_service, tcp::endpoint(tcp::v4(), port)) {
+        clientProcessTime = 0;
+        requestCount = 0;
         handlers.push_back(new LoginMessageHandler(this));
         handlers.push_back(new SendMessageHandler(this));
         handlers.push_back(new FetchMessageHandler(this));
@@ -247,11 +254,20 @@ public:
     }
 
 private:
+    void updateClientProcessTime(size_t time) {
+        boost::mutex::scoped_lock lock(lockCounters);
+        clientProcessTime = (clientProcessTime * requestCount + time) / (requestCount + 1);
+        ++requestCount;
+        std::cout << "Total clients: " << (sessions.size() - 1) << " | mean request time: " << clientProcessTime << " us" << std::endl;
+    }
+
     boost::asio::io_service &_io_service;
+    boost::mutex lockCounters;
     tcp::acceptor _acceptor;
     std::set<session_ptr> sessions;
     std::vector<MessageHandler*> handlers;
     std::vector<std::string> messages;
+    size_t clientProcessTime, requestCount;
 
 };
 

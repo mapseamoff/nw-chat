@@ -1,29 +1,39 @@
 #ifndef MAINWINDOW_H
 #define MAINWINDOW_H
-#include <QtGui>
+
+#include <QMainWindow>
+#include <QTextEdit>
+#include <QPushButton>
+
 #include "logindialog.h"
-#include "ChatClient.h"
+#include "chatclient.h"
 
 class MainWindow: public QMainWindow
 {
     Q_OBJECT
 public:
-    MainWindow();
+    MainWindow(QWidget *parent = 0);
     ~MainWindow();
+
 private:
     QTextEdit * chatEdit;
     QTextEdit * messageEdit;
     QPushButton * sendButton;
     QPushButton * connectButton;
 
-    boost::mutex clientLock;
-    boost::condition_variable waitClient;
-    ChatClient * client;
+    ChatClient *client;
+    LoginDialog *loginDialog;
+    QString userName, lastMessage;
 
 private slots:
     void sendMessage();
-    void update();
-    void connectWindow();
+    void showLoginDialog();
+    void disconnectFromChat();
+    void connectedToChat(bool ok);
+    void loggedIn(bool ok);
+    void socketError();
+    void protocolError();
+    void newMessage(QString msg);
 };
 
 #endif // MAINWINDOW_H

@@ -9,7 +9,7 @@ class LoginDialog: public QDialog {
     Q_OBJECT
 
 public:
-    LoginDialog();
+    LoginDialog(QWidget *parent = 0);
     QLineEdit * loginText;
     QLineEdit * serverText;
     QLineEdit * portText;

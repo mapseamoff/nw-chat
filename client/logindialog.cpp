@@ -1,7 +1,7 @@
 #include "logindialog.h"
 #include <QLayout>
 
-LoginDialog::LoginDialog()
+LoginDialog::LoginDialog(QWidget *parent) : QDialog(parent, Qt::Window | Qt::CustomizeWindowHint | Qt::WindowCloseButtonHint)
 {
     serverText = new QLineEdit(tr("127.0.0.1"));
     portText = new QLineEdit(tr("9999"));
@@ -38,4 +38,5 @@ LoginDialog::LoginDialog()
     this->setLayout(mainLayout);
     this->setWindowTitle("Connect to Chat");
     this->resize(200, 150);
+    this->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
 }

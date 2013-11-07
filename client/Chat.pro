@@ -4,22 +4,20 @@
 #
 #-------------------------------------------------
 
-QT       += core gui
+QT       += core gui network
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
-TARGET = Chat
+TARGET = chat
 TEMPLATE = app
 
-#LIBS += -L/home/andrey/boost/lib/
-LIBS += -lboost_system -lboost_thread
-
-#INCLUDEPATH += /home/andrey/boost/include/
+INCLUDEPATH += ..
 
 SOURCES += main.cpp \
     mainwindow.cpp \
-    logindialog.cpp
+    logindialog.cpp \
+    chatclient.cpp
 
 HEADERS += \
     mainwindow.h \
     logindialog.h \
-    ChatClient.h
+    chatclient.h
