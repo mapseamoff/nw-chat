@@ -6,6 +6,7 @@
 #include <boost/thread/condition_variable.hpp>
 #include <boost/lexical_cast.hpp>
 #include <queue>
+#include <sstream>
 
 #include "../chatmessage.h"
 
@@ -43,8 +44,6 @@ private:
         if(!hasMsgs) {
             std::vector<char> buf = ChatMessage::serialize(writeMsgQueue.front());
             boost::asio::async_write(sock, boost::asio::buffer(buf.data(), buf.size()), boost::bind(&ChatClient::handleWrite, this, boost::asio::placeholders::error));
-        } else {
-            //std::cout << "message enqueued" << std::endl;
         }
     }
 
@@ -56,7 +55,7 @@ private:
                 boost::asio::async_write(sock, boost::asio::buffer(buf.data(), buf.size()), boost::bind(&ChatClient::handleWrite, this, boost::asio::placeholders::error));
             }
         } else {
-            //std::cout << "Unable to send message: " << error.message() << std::endl;
+            streamMessages << "Unable to send message: " << error.message() << std::endl;
         }
     }
 
@@ -74,7 +73,7 @@ private:
                                     boost::bind(&ChatClient::handleReadMessageBody, this, boost::asio::placeholders::error));
         } else {
             //connection lost - stop client
-            //std::cout << "Unable to read message header: " << error.message() << std::endl;
+            streamMessages << "Unable to read message header: " << error.message() << std::endl;
         }
     }
 
@@ -85,7 +84,7 @@ private:
             case ChatMessage::Login: {
                 try {
                     lastId = boost::lexical_cast<size_t>(replyText);
-              //      std::cout << "logged in" << std::endl;
+                    streamMessages << "logged in" << std::endl;
                     loggedIn = true;
                 } catch(...) {
                     lastError = "server rejects connection";
@@ -100,7 +99,7 @@ private:
                         fetchMessages();
                     } else {
                         ++lastId;
-                //        std::cout << "<print last user message here>" << std::endl;
+                        streamMessages << "<print last user message here>" << std::endl;
                     }
                 } catch(...) {
                     lastError = "unable to parse reply";
@@ -109,19 +108,19 @@ private:
             }
             case ChatMessage::Fetch:
                 memcpy(&lastId, reply.body.data(), sizeof(size_t));
-               // std::cout << std::string(reply.body.data() + sizeof(size_t), reply.body.size() - sizeof(size_t)) << std::endl;
+                streamMessages << std::string(reply.body.data() + sizeof(size_t), reply.body.size() - sizeof(size_t)) << std::endl;
                 break;
             case ChatMessage::List:
-               // std::cout << replyText << std::endl;
+                streamMessages << replyText << std::endl;
                 break;
             default:
-        //        std::cout << "Error: " << replyText << std::endl;
+                streamMessages << "Error: " << replyText << std::endl;
                 break;
             }
             waitForMessage();
         } else {
             //connection lost - stop client
-          //  std::cout << "Unable to read message: " << error.message() << std::endl;
+            streamMessages << "Unable to read message: " << error.message() << std::endl;
         }
     }
 
@@ -158,6 +157,10 @@ public:
         if(loggedIn) postMessage(ChatMessage::createMessage(1, ChatMessage::Logout, ""));
     }
 
+    std::stringstream & getMessages() {
+        return streamMessages;
+    }
+
 private:
     boost::asio::io_service &_io_service;
     tcp::socket sock;
@@ -167,6 +170,7 @@ private:
     std::queue<ChatMessage> writeMsgQueue;
     boost::condition_variable &connectLock;
     bool loggedIn;
+    std::stringstream streamMessages;
 };
 
 #endif // CHATCLIENT_H

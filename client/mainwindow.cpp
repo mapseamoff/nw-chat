@@ -20,22 +20,26 @@ MainWindow::MainWindow()
     mainLayout->addLayout(layout);
     QWidget *w = new QWidget(this);
     w->setLayout(mainLayout);
-    w->setWindowTitle("Chat");
+    w->setWindowTitle(tr("Chat (Disconnected)"));
     this->setCentralWidget(w);
     this->resize(400, 400);
     messageEdit->setFixedHeight(40);
     messageEdit->setFocus();
     chatEdit->setReadOnly(true);
-
+    sendButton->setDisabled(true);
     connectWindow();
+
 }
 
 MainWindow::~MainWindow() {
-   // delete client;
+    delete client;
 }
 
-void MainWindow::sendMessage() {/*
-    std::string msg;
+void MainWindow::sendMessage() {
+    std::string msg = messageEdit->toPlainText().toStdString();
+    if (msg == "") {
+        return;
+    }
     if(msg == "/exit") {
         client->logoutUser();
     }
@@ -43,17 +47,21 @@ void MainWindow::sendMessage() {/*
         client->getUserList();
     } else {
         client->sendMessage(msg);
-    }*/
+    }
 }
 
 void MainWindow::update() {
-
+    std::stringstream &ss = client->getMessages();
+    std::string str;
+    while (ss >> str) {
+        chatEdit->append(str.c_str());
+    }
 }
 
 void MainWindow::connectWindow() {
     LoginDialog * dialog = new LoginDialog();
     if (dialog->exec() == QDialog::Accepted) {
-    /*    boost::mutex::scoped_lock lock(clientLock);
+        boost::mutex::scoped_lock lock(clientLock);
         std::string server = dialog->serverText->text().toStdString();
         std::string login = dialog->loginText->text().toStdString();
         std::string port = dialog->portText->text().toStdString();
@@ -78,7 +86,8 @@ void MainWindow::connectWindow() {
             chatEdit->setText("Unable to login");
             return;
         }
-        chatEdit->setText("Hello! ");*/
+        sendButton->setDisabled(false);
+        this->setWindowTitle(tr("Chat (Connected)"));
     } else {
         exit(0);
     }

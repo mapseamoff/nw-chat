@@ -16,9 +16,9 @@ private:
     QPushButton * sendButton;
     QPushButton * connectButton;
 
-//    boost::mutex clientLock;
-//    boost::condition_variable waitClient;
-//    ChatClient * client;
+    boost::mutex clientLock;
+    boost::condition_variable waitClient;
+    ChatClient * client;
 
 private slots:
     void sendMessage();
