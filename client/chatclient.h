@@ -2,11 +2,11 @@
 #define CHATCLIENT_H
 
 #include <boost/lexical_cast.hpp>
-#include <queue>
-#include <sstream>
 
 #include <QObject>
 #include <QTcpSocket>
+#include <QQueue>
+#include <QDebug>
 
 #include "../chatmessage.h"
 
@@ -40,7 +40,10 @@ public:
     }
 
     void fetchMessages() {
-        if(loggedIn) writeMessage(ChatMessage::createMessage(1, ChatMessage::Fetch, boost::lexical_cast<std::string>(lastId)));
+        if(loggedIn) {
+            writeMessage(ChatMessage::createMessage(1, ChatMessage::Fetch, boost::lexical_cast<std::string>(lastId)));
+            qDebug() << lastId;
+        }
     }
 
     void getUserList() {
@@ -61,6 +64,7 @@ signals:
     void socketError();
     void protocolError();
     void gotMessage(QString);
+    void gotUserList(QString);
 
 private slots:
     void handleError();
@@ -75,8 +79,7 @@ private:
 private:
     QTcpSocket *sock;
     QString lastError;
-    ChatMessage reply;
-    std::queue<ChatMessage> writeMsgQueue;
+    QQueue<ChatMessage> writeMsgQueue;
     bool loggedIn;
     size_t lastId;
 };

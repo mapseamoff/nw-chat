@@ -2,6 +2,7 @@
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QMessageBox>
+#include <QGridLayout>
 
 MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     chatEdit = new QTextEdit(this);
@@ -9,23 +10,33 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     sendButton = new QPushButton(tr("Send"), this);
     connectButton = new QPushButton(tr("Connect"), this);
     loginDialog = new LoginDialog(this);
+    userList = new QListWidget(this);
 
     connect(sendButton, SIGNAL(clicked()), this, SLOT(sendMessage()));
     connect(connectButton, SIGNAL(clicked()), this, SLOT(showLoginDialog()));
 
-    QHBoxLayout * layout = new QHBoxLayout();
-    layout->addWidget(messageEdit);
-    layout->addWidget(sendButton);
-    layout->addWidget(connectButton);
-    QVBoxLayout * mainLayout = new QVBoxLayout();
-    mainLayout->addWidget(chatEdit);
-    mainLayout->addLayout(layout);
+//    QHBoxLayout * layout = new QHBoxLayout();
+//    layout->addWidget(messageEdit);
+//    layout->addWidget(sendButton);
+//    layout->addWidget(connectButton);
+
+    QGridLayout * mainLayout = new QGridLayout();
+    mainLayout->addWidget(chatEdit, 0, 0);
+    mainLayout->addWidget(userList, 0, 1);
+    mainLayout->addWidget(messageEdit, 1, 0, 3, 1);
+    mainLayout->addWidget(sendButton, 1, 1);
+    mainLayout->addWidget(connectButton, 3, 1);
+//    mainLayout->addLayout(layout, 1, 0, 1, 2);
+    mainLayout->setSpacing(5);
+    mainLayout->setContentsMargins(5, 5, 5, 5);
+
     QWidget *w = new QWidget(this);
     w->setLayout(mainLayout);
     w->setWindowTitle(tr("Chat (Disconnected)"));
     this->setCentralWidget(w);
     this->resize(400, 400);
-    messageEdit->setFixedHeight(40);
+    userList->setMaximumWidth(100);
+    messageEdit->setMaximumHeight(60);
     messageEdit->setFocus();
     chatEdit->setReadOnly(true);
     sendButton->setDisabled(true);
@@ -36,6 +47,13 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     connect(client, SIGNAL(socketError()), this, SLOT(socketError()));
     connect(client, SIGNAL(protocolError()), this, SLOT(protocolError()));
     connect(client, SIGNAL(gotMessage(QString)), this, SLOT(newMessage(QString)));
+    connect(client, SIGNAL(gotUserList(QString)), this, SLOT(updateUserList(QString)));
+
+    fetchTimer = new QTimer(this);
+    connect(fetchTimer, SIGNAL(timeout()), this, SLOT(fetchMessages()));
+
+    userListTimer = new QTimer(this);
+    connect(userListTimer, SIGNAL(timeout()), this, SLOT(fetchUserList()));
 
     userName = "";
 
@@ -78,6 +96,9 @@ void MainWindow::loggedIn(bool ok) {
         connect(connectButton, SIGNAL(clicked()), this, SLOT(disconnectFromChat()));
         this->setWindowTitle("Chat (Connected)");
         chatEdit->append("Welcome, " + userName + "!");
+        fetchUserList();
+        fetchTimer->start(1000);
+        userListTimer->start(10000);
     }
 }
 
@@ -93,6 +114,8 @@ void MainWindow::showLoginDialog() {
 }
 
 void MainWindow::disconnectFromChat() {
+    fetchTimer->stop();
+    userListTimer->stop();
     client->logoutUser();
     sendButton->setEnabled(false);
     connectButton->setText("Connect");
@@ -112,4 +135,18 @@ void MainWindow::protocolError() {
 void MainWindow::newMessage(QString msg) {
     if(msg.isEmpty()) chatEdit->append(lastMessage);
     else chatEdit->append(msg);
+}
+
+void MainWindow::fetchMessages() {
+    client->fetchMessages();
+}
+
+void MainWindow::fetchUserList() {
+    client->getUserList();
+}
+
+void MainWindow::updateUserList(QString list) {
+    QStringList users = list.split('\n');
+    userList->clear();
+    userList->addItems(users);
 }

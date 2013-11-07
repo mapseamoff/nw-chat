@@ -29,7 +29,8 @@ void ChatClient::handleConnect() {
 }
 
 void ChatClient::handleRead() {
-    while(sock->bytesAvailable() >= sizeof(reply.header)) {
+    while(sock->bytesAvailable() >= sizeof(ChatMessage::header)) {
+        ChatMessage reply;
         sock->read((char*)&reply.header, sizeof(reply.header));
         reply.body.resize(reply.header.bodyLength);
         sock->read(reply.body.data(), reply.body.size());
@@ -38,7 +39,7 @@ void ChatClient::handleRead() {
 }
 
 void ChatClient::handleWrite(qint64 bw) {
-    writeMsgQueue.pop();
+    writeMsgQueue.pop_front();
     if(!writeMsgQueue.empty()) {
         std::vector<char> buf = ChatMessage::serialize(writeMsgQueue.front());
         sock->write(buf.data(), buf.size());
@@ -47,7 +48,7 @@ void ChatClient::handleWrite(qint64 bw) {
 
 void ChatClient::writeMessage(const ChatMessage &msg) {
     bool hasMsgs = !writeMsgQueue.empty();
-    writeMsgQueue.push(msg);
+    writeMsgQueue.push_back(msg);
     if(!hasMsgs) {
         std::vector<char> buf = ChatMessage::serialize(writeMsgQueue.front());
         sock->write(buf.data(), buf.size());
@@ -83,12 +84,14 @@ void ChatClient::processMessage(const ChatMessage &msg) {
         }
         break;
     }
-    case ChatMessage::Fetch:
+    case ChatMessage::Fetch: {
         memcpy(&lastId, msg.body.data(), sizeof(size_t));
-        emit gotMessage(QString::fromStdString(std::string(msg.body.data() + sizeof(size_t), msg.body.size() - sizeof(size_t))));
+        qint64 ln = msg.body.size() - sizeof(size_t);
+        if(ln > 0) emit gotMessage(QString::fromStdString(std::string(msg.body.data() + sizeof(size_t), ln)));
         break;
+    }
     case ChatMessage::List:
-//        streamMessages << replyText << std::endl;
+        emit gotUserList(QString::fromStdString(replyText));
         break;
     default:
         lastError = "Error: " + QString::fromStdString(replyText);

@@ -4,6 +4,8 @@
 #include <QMainWindow>
 #include <QTextEdit>
 #include <QPushButton>
+#include <QTimer>
+#include <QListWidget>
 
 #include "logindialog.h"
 #include "chatclient.h"
@@ -20,8 +22,10 @@ private:
     QTextEdit * messageEdit;
     QPushButton * sendButton;
     QPushButton * connectButton;
+    QListWidget * userList;
 
     ChatClient *client;
+    QTimer *fetchTimer, *userListTimer;
     LoginDialog *loginDialog;
     QString userName, lastMessage;
 
@@ -34,6 +38,9 @@ private slots:
     void socketError();
     void protocolError();
     void newMessage(QString msg);
+    void updateUserList(QString list);
+    void fetchMessages();
+    void fetchUserList();
 };
 
 #endif // MAINWINDOW_H

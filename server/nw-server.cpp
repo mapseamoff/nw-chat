@@ -151,10 +151,12 @@ class ChatServer {
             try {
                 lastId = boost::lexical_cast<size_t>(std::string(in.body.data(), in.body.size()));
             } catch(...) {
+                std::cout << "unable to get lastId" << std::endl;
                 out = ChatMessage::createMessage(1, ChatMessage::Invalid, "bad arguments");
                 return true;
             }
             if(lastId > server->messages.size()) {
+                std::cout << "got last id: " << lastId << "max: " << server->messages.size() << std::endl;
                 out = ChatMessage::createMessage(1, ChatMessage::Invalid, "bad arguments");
                 return true;
             }
@@ -207,7 +209,7 @@ class ChatServer {
 
         bool process(ChatSession *session, const ChatMessage &in, ChatMessage &out) {
             if(in.header.type != ChatMessage::Logout || in.header.version != version) return false;
-            server->closeSession(session->shared_from_this());
+//            server->closeSession(session->shared_from_this());
             return true;
         }
     };
