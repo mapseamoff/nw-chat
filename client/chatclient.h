@@ -7,6 +7,7 @@
 #include <QTcpSocket>
 #include <QQueue>
 #include <QDebug>
+#include <QMutex>
 
 #include "../chatmessage.h"
 
@@ -41,6 +42,7 @@ public:
 
     void fetchMessages() {
         if(loggedIn) {
+            Lock lock(idMutex);
             writeMessage(ChatMessage::createMessage(1, ChatMessage::Fetch, boost::lexical_cast<std::string>(lastId)));
             qDebug() << lastId;
         }
@@ -76,12 +78,21 @@ private:
     void writeMessage(const ChatMessage &msg);
     void processMessage(const ChatMessage &msg);
 
+    class Lock {
+    public:
+        Lock(QMutex& mutex): mutex(mutex) {mutex.lock();}
+        ~Lock() {mutex.unlock();}
+    private:
+        QMutex& mutex;
+    };
+
 private:
     QTcpSocket *sock;
     QString lastError;
     QQueue<ChatMessage> writeMsgQueue;
     bool loggedIn;
     size_t lastId;
+    QMutex idMutex;
 };
 
 #endif // CHATCLIENT_H

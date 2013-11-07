@@ -13,6 +13,7 @@ ChatClient::~ChatClient() {
 
 void ChatClient::connectToChat(const QString &host, const QString &port) {
     loggedIn = false;
+
     lastId = 0;
     if(sock->isOpen()) sock->disconnectFromHost();
     sock->connectToHost(host, port.toInt());
@@ -60,6 +61,7 @@ void ChatClient::processMessage(const ChatMessage &msg) {
     switch(msg.header.type) {
     case ChatMessage::Login: {
         try {
+            Lock lock(idMutex);
             lastId = boost::lexical_cast<size_t>(replyText);
             loggedIn = true;
             emit loginResult(true);
@@ -72,9 +74,10 @@ void ChatClient::processMessage(const ChatMessage &msg) {
     case ChatMessage::Message: {
         try {
             size_t id = boost::lexical_cast<size_t>(replyText);
+            Lock lock(idMutex);
             if(lastId + 1 != id) {
                 fetchMessages();
-            } else {
+            } else {                
                 ++lastId;
                 emit gotMessage(QString());
             }
