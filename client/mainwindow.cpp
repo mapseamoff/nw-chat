@@ -79,6 +79,7 @@ void MainWindow::sendMessage() {
         client->sendMessage(msg);
     }
     messageEdit->clear();
+    fetchTimer->start();
 }
 
 void MainWindow::connectedToChat(bool ok) {

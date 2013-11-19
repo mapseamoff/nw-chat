@@ -5,6 +5,10 @@ ChatClient::ChatClient(QObject *parent) : QObject(parent) {
     connect(sock, SIGNAL(connected()), this, SLOT(handleConnect()));
     connect(sock, SIGNAL(error(QAbstractSocket::SocketError)), this, SLOT(handleError()));
     connect(sock, SIGNAL(bytesWritten(qint64)), this, SLOT(handleWrite(qint64)));
+    consumers.push_back(new LoginConsumer(this));
+    consumers.push_back(new MessageConsumer(this));
+    consumers.push_back(new FetchConsumer(this));
+    consumers.push_back(new ListConsumer(this));
 }
 
 ChatClient::~ChatClient() {
@@ -57,49 +61,12 @@ void ChatClient::writeMessage(const ChatMessage &msg) {
 }
 
 void ChatClient::processMessage(const ChatMessage &msg) {
-    std::string replyText(msg.body.data(), msg.body.size());
-    switch(msg.header.type) {
-    case ChatMessage::Login: {
-        try {
-            Lock lock(idMutex);
-            lastId = boost::lexical_cast<size_t>(replyText);
-            loggedIn = true;
-            emit loginResult(true);
-        } catch(...) {
-            lastError = "server rejects connection";
-            emit loginResult(false);
+    for (std::vector<Consumer *>::iterator it = consumers.begin(); it != consumers.end(); ++it) {
+        if ((*it)->handleMessage(msg)) {
+            return;
         }
-        break;
     }
-    case ChatMessage::Message: {
-        try {
-            size_t id = boost::lexical_cast<size_t>(replyText);
-            Lock lock(idMutex);
-            if(lastId + 1 != id) {
-                fetchMessages();
-            } else {                
-                ++lastId;
-                emit gotMessage(QString());
-            }
-        } catch(...) {
-            lastError = "unable to parse reply";
-            emit protocolError();
-        }
-        break;
-    }
-    case ChatMessage::Fetch: {
-        memcpy(&lastId, msg.body.data(), sizeof(size_t));
-        qint64 ln = msg.body.size() - sizeof(size_t);
-        if(ln > 0) emit gotMessage(QString::fromStdString(std::string(msg.body.data() + sizeof(size_t), ln)));
-        break;
-    }
-    case ChatMessage::List:
-        emit gotUserList(QString::fromStdString(replyText));
-        break;
-    default:
-        lastError = "Error: " + QString::fromStdString(replyText);
-        emit protocolError();
-        break;
-    }
+    lastError = "Error: " + QString::fromStdString(std::string(msg.body.data(), msg.body.size()));
+    emit protocolError();
 }
 
