@@ -42,9 +42,9 @@ public:
 
     void fetchMessages() {
         if(loggedIn) {
-            QMutexLocker lock(&idMutex);
+//            QMutexLocker lock(&idMutex);
             writeMessage(ChatMessage::createMessage(1, ChatMessage::Fetch, boost::lexical_cast<std::string>(lastId)));
-            qDebug() << lastId;
+//            qDebug() << lastId;
         }
     }
 
@@ -126,11 +126,14 @@ private:
             try {
                 std::string replyText(msg.body.data(), msg.body.size());
                 size_t id = boost::lexical_cast<size_t>(replyText);
-                QMutexLocker lock(&client->idMutex);
+//                QMutexLocker lock(&client->idMutex);
+                client->idMutex.lock();
                 if(client->lastId + 1 != id) {
+                    client->idMutex.unlock();
                     client->fetchMessages();
                 } else {
                     ++client->lastId;
+                    client->idMutex.unlock();
                     emit  client->gotMessage(QString());
                 }
             } catch(...) {
@@ -149,7 +152,11 @@ private:
                 return false;
             }
 
-            memcpy(&client->lastId, msg.body.data(), sizeof(size_t));
+
+            {
+                QMutexLocker lock(&client->idMutex);
+                memcpy(&client->lastId, msg.body.data(), sizeof(size_t));
+            }
             qint64 ln = msg.body.size() - sizeof(size_t);
             if(ln > 0) emit client->gotMessage(QString::fromStdString(std::string(msg.body.data() + sizeof(size_t), ln)));
             return true;

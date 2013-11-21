@@ -110,7 +110,9 @@ class ChatServer {
             out = ChatMessage::createMessage(version, ChatMessage::Login, boost::lexical_cast<std::string>(server->messages.size()));
             session->userName = userName;
 
-            std::cout << "New user: " << userName << std::endl;
+//            std::cout << "New user: " << userName << std::endl;
+
+            server->showClientPorcessTime();
 
             return true;
         }
@@ -129,7 +131,7 @@ class ChatServer {
                 return true;
             }
             server->messages.push_back("[" + session->userName + "] " + std::string(in.body.data(), in.header.bodyLength));
-            std::cout << server->messages.back() << std::endl;
+//            std::cout << server->messages.back() << std::endl;
             out = ChatMessage::createMessage(version, ChatMessage::Message, boost::lexical_cast<std::string>(server->messages.size()));
             return true;
         }
@@ -256,11 +258,24 @@ public:
     }
 
 private:
+    void showClientPorcessTime() {
+        boost::mutex::scoped_lock lock(lockCounters);
+        if(requestCount > 0) {
+            std::cout << "Users: " << (sessions.size() - 2) << " | mean request time: " << clientProcessTime / requestCount << " us" << std::endl;
+            clientProcessTime = 0;
+            requestCount = 0;
+        }
+    }
+
     void updateClientProcessTime(size_t time) {
         boost::mutex::scoped_lock lock(lockCounters);
-        clientProcessTime = (clientProcessTime * requestCount + time) / (requestCount + 1);
-        ++requestCount;
-        std::cout << "Total clients: " << (sessions.size() - 1) << " | mean request time: " << clientProcessTime << " us" << std::endl;
+//        std::cout << "Request process time: " << time << " us" << std::endl;
+        clientProcessTime += time;
+        requestCount++;
+//        if(requestCount == 20) {
+//        clientProcessTime = (clientProcessTime * requestCount + time) / (requestCount + 1);
+//        ++requestCount;
+//        }
     }
 
     boost::asio::io_service &_io_service;

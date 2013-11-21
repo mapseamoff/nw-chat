@@ -10,9 +10,14 @@ QT       -= gui
 
 TARGET = console_client
 CONFIG   += console
-INCLUDEPATH += ..
+INCLUDEPATH += ../client
 
 TEMPLATE = app
 
-HEADERS += ../client/chatclient.h
-SOURCES += main.cpp ../client/chatclient.cpp
+SOURCES += main.cpp \
+    ../client/chatclient.cpp
+
+HEADERS += \
+    ../client/chatclient.h \
+    ../chatmessage.h \
+    RunChat.h
